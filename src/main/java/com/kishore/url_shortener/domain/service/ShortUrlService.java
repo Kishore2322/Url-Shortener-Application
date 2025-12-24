@@ -13,14 +13,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
 public class ShortUrlService {
 
+    private static final Logger log = LoggerFactory.getLogger(ShortUrlService.class);
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int SHORT_KEY_LENGTH = 6;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final ShortUrlRepository shortUrlRepository;
     private final EntityMapper entityMapper;
     private final ApplicationProperties properties;
+
 
     public ShortUrlService(ShortUrlRepository shortUrlRepository, EntityMapper entityMapper, ApplicationProperties properties) {
         this.shortUrlRepository = shortUrlRepository;
@@ -28,7 +35,6 @@ public class ShortUrlService {
         this.properties = properties;
     }
 
-    private static final Logger log = LoggerFactory.getLogger(ShortUrlService.class);
 
     public List<ShortUrlDto> findAllPublicShortUrls() {
         return shortUrlRepository.findPublicShortUrls()
@@ -51,7 +57,7 @@ public class ShortUrlService {
         shortUrl.setOriginalUrl(cmd.originalUrl());
         shortUrl.setShortKey(shortKey);
         shortUrl.setCreatedAt(null);
-        shortUrl.setPrivate(false);
+        shortUrl.setIsPrivate(false);
         shortUrl.setClickCount(0L);
         shortUrl.setExpiresAt(Instant.now().plusSeconds(properties.defaultExpiryInDays() * 24L * 60 * 60));
         shortUrl.setCreatedAt(Instant.now());
@@ -68,15 +74,25 @@ public class ShortUrlService {
         } while (shortUrlRepository.existsByShortKey(shortKey));
         return shortKey;
     }
-
-    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    private static final int SHORT_KEY_LENGTH = 6;
-    private static final SecureRandom RANDOM = new SecureRandom();
     public static String generateRandomShortKey() {
         StringBuilder stringBuilder = new StringBuilder(SHORT_KEY_LENGTH);
         for (int i = 0; i < SHORT_KEY_LENGTH; i++) {
             stringBuilder.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
         }
         return stringBuilder.toString();
+    }
+    @Transactional
+    public Optional<ShortUrlDto> accessShortUrl(String shortKey) {
+        Optional<ShortUrl> shortUrlOptional = shortUrlRepository.findByShortKey(shortKey);
+
+        if (shortUrlOptional.isEmpty()) return Optional.empty();
+
+        ShortUrl shortUrl = shortUrlOptional.get();
+        if (shortUrl.getExpiresAt() != null && shortUrl.getExpiresAt().isBefore(Instant.now())) return Optional.empty();
+
+        shortUrl.setClickCount(shortUrl.getClickCount() + 1);
+        shortUrlRepository.save(shortUrl);
+
+        return shortUrlOptional.map(entityMapper::toShortUrlDto);
     }
 }

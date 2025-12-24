@@ -19,7 +19,7 @@ public class EntityMapper {
                 shortUrl.getId(),
                 shortUrl.getShortKey(),
                 shortUrl.getOriginalUrl(),
-                shortUrl.getPrivate(),
+                shortUrl.getIsPrivate(),
                 shortUrl.getExpiresAt(),
                 userDto,
                 shortUrl.getClickCount(),
