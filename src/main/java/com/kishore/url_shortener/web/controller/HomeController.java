@@ -1,14 +1,14 @@
 package com.kishore.url_shortener.web.controller;
 
 import com.kishore.url_shortener.ApplicationProperties;
+import com.kishore.url_shortener.domain.entity.User;
 import com.kishore.url_shortener.domain.exception.ShortUrlNotFoundException;
 import com.kishore.url_shortener.domain.model.CreateShortUrlCmd;
 import com.kishore.url_shortener.domain.model.ShortUrlDto;
 import com.kishore.url_shortener.domain.service.ShortUrlService;
 import com.kishore.url_shortener.web.dto.CreateShortUrlForm;
+import com.kishore.url_shortener.web.utils.SecurityUtils;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,27 +26,31 @@ public class HomeController {
 
     private final ShortUrlService shortUrlService;
     private final ApplicationProperties properties;
+    private final SecurityUtils securityUtils;
 
-    public HomeController(ShortUrlService shortUrlService, ApplicationProperties properties) {
+    public HomeController(ShortUrlService shortUrlService, ApplicationProperties properties, SecurityUtils securityUtils) {
         this.shortUrlService = shortUrlService;
         this.properties = properties;
+        this.securityUtils = securityUtils;
     }
 
     @GetMapping("/")
     public String home(Model model) {
+        User currentUser = securityUtils.getCurrentUser();
         List<ShortUrlDto> shortUrls = shortUrlService.findAllPublicShortUrls();
         model.addAttribute("shortUrls", shortUrls);
         model.addAttribute("baseUrl", properties.baseUrl());
         model.addAttribute("createShortUrlForm", new CreateShortUrlForm(""));
+        model.addAttribute("nameValidated", currentUser.getName());
         return "index";
     }
 
     @PostMapping("/short-urls")
     public String createShortUrl(@ModelAttribute("createShortUrlForm") @Valid CreateShortUrlForm form,
-                          BindingResult bindingResult,
-                          RedirectAttributes redirectAttributes,
-                          Model model) {
-        if(bindingResult.hasErrors()) {
+                                 BindingResult bindingResult,
+                                 RedirectAttributes redirectAttributes,
+                                 Model model) {
+        if (bindingResult.hasErrors()) {
             List<ShortUrlDto> shortUrls = shortUrlService.findAllPublicShortUrls();
             model.addAttribute("shortUrls", shortUrls);
             model.addAttribute("baseUrl", properties.baseUrl());
@@ -56,8 +60,8 @@ public class HomeController {
         try {
             CreateShortUrlCmd cmd = new CreateShortUrlCmd(form.originalUrl());
             var shortUrlDto = shortUrlService.createShortUrl(cmd);
-            redirectAttributes.addFlashAttribute("successMessage", "Short URL created successfully "+
-                    properties.baseUrl()+"/s/"+shortUrlDto.shortKey());
+            redirectAttributes.addFlashAttribute("successMessage", "Short URL created successfully " +
+                    properties.baseUrl() + "/s/" + shortUrlDto.shortKey());
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Failed to create short URL");
         }
@@ -72,5 +76,10 @@ public class HomeController {
         }
         ShortUrlDto shortUrlDto = shortUrlDtoOptional.get();
         return "redirect:" + shortUrlDto.originalUrl();
+    }
+
+    @GetMapping("/login")
+    public String loginForm() {
+        return "login";
     }
 }
