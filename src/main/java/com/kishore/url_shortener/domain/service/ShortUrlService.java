@@ -5,6 +5,7 @@ import com.kishore.url_shortener.domain.entity.ShortUrl;
 import com.kishore.url_shortener.domain.model.CreateShortUrlCmd;
 import com.kishore.url_shortener.domain.model.ShortUrlDto;
 import com.kishore.url_shortener.domain.repository.ShortUrlRepository;
+import com.kishore.url_shortener.domain.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,12 +28,14 @@ public class ShortUrlService {
     private final ShortUrlRepository shortUrlRepository;
     private final EntityMapper entityMapper;
     private final ApplicationProperties properties;
+    private final UserRepository userRepository;
 
 
-    public ShortUrlService(ShortUrlRepository shortUrlRepository, EntityMapper entityMapper, ApplicationProperties properties) {
+    public ShortUrlService(ShortUrlRepository shortUrlRepository, EntityMapper entityMapper, ApplicationProperties properties, UserRepository userRepository) {
         this.shortUrlRepository = shortUrlRepository;
         this.entityMapper = entityMapper;
         this.properties = properties;
+        this.userRepository = userRepository;
     }
 
 
@@ -56,10 +59,17 @@ public class ShortUrlService {
         var shortUrl = new ShortUrl();
         shortUrl.setOriginalUrl(cmd.originalUrl());
         shortUrl.setShortKey(shortKey);
-        shortUrl.setCreatedAt(null);
-        shortUrl.setIsPrivate(false);
+        if (cmd.userId() == null) {
+            shortUrl.setCreatedBy(null);
+            shortUrl.setIsPrivate(false);
+            shortUrl.setExpiresAt(Instant.now().plusSeconds(properties.defaultExpiryInDays() * 24L * 60 * 60));
+        } else {
+            shortUrl.setCreatedBy(userRepository.findById(cmd.userId()).orElseThrow());
+            shortUrl.setIsPrivate(cmd.isPrivate() != null && cmd.isPrivate());
+            shortUrl.setExpiresAt(cmd.expirationInDays() != null ?
+                    Instant.now().plusSeconds(properties.defaultExpiryInDays() * 24L * 60 * 60) : null);
+        }
         shortUrl.setClickCount(0L);
-        shortUrl.setExpiresAt(Instant.now().plusSeconds(properties.defaultExpiryInDays() * 24L * 60 * 60));
         shortUrl.setCreatedAt(Instant.now());
         log.info("before saving");
         shortUrlRepository.save(shortUrl);
