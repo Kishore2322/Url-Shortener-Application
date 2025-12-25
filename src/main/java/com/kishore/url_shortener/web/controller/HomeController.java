@@ -41,7 +41,9 @@ public class HomeController {
         model.addAttribute("shortUrls", shortUrls);
         model.addAttribute("baseUrl", properties.baseUrl());
         model.addAttribute("createShortUrlForm", new CreateShortUrlForm(""));
-        model.addAttribute("nameValidated", currentUser.getName());
+        if (currentUser != null) {
+            model.addAttribute("nameValidated", currentUser.getName());
+        }
         return "index";
     }
 
