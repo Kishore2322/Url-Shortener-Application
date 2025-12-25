@@ -92,13 +92,21 @@ public class ShortUrlService {
         return stringBuilder.toString();
     }
     @Transactional
-    public Optional<ShortUrlDto> accessShortUrl(String shortKey) {
+    public Optional<ShortUrlDto> accessShortUrl(String shortKey, Long userId) {
         Optional<ShortUrl> shortUrlOptional = shortUrlRepository.findByShortKey(shortKey);
 
-        if (shortUrlOptional.isEmpty()) return Optional.empty();
+        if (shortUrlOptional.isEmpty()) {
+            return Optional.empty();
+        }
 
         ShortUrl shortUrl = shortUrlOptional.get();
-        if (shortUrl.getExpiresAt() != null && shortUrl.getExpiresAt().isBefore(Instant.now())) return Optional.empty();
+        if (shortUrl.getExpiresAt() != null && shortUrl.getExpiresAt().isBefore(Instant.now())) {
+            return Optional.empty();
+        }
+
+        if(shortUrl.getIsPrivate() != null && shortUrl.getCreatedBy() != null && !shortUrl.getCreatedBy().getId().equals(userId)) {
+            return Optional.empty();
+        }
 
         shortUrl.setClickCount(shortUrl.getClickCount() + 1);
         shortUrlRepository.save(shortUrl);
