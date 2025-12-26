@@ -123,4 +123,15 @@ public class ShortUrlService {
 
         return shortUrlOptional.map(entityMapper::toShortUrlDto);
     }
+
+    public PagedResult<ShortUrlDto> getUserShortUrls(Long userId, int page, int pageSize) {
+        Pageable pageable = getPageable(page, pageSize);
+        var shortUrlsPage = shortUrlRepository.findByCreatedById(userId, pageable).map(entityMapper::toShortUrlDto);
+        return PagedResult.from(shortUrlsPage);
+    }
+
+    private Pageable getPageable(int page, int pageSize) {
+        page = page > 1 ? page - 1 : 0;
+        return PageRequest.of(page, pageSize, Sort.Direction.DESC, "createdAt");
+    }
 }

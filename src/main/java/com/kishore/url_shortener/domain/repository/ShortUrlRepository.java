@@ -18,4 +18,6 @@ public interface ShortUrlRepository extends JpaRepository<ShortUrl, Long> {
     boolean existsByShortKey(String shortKey);
 
     Optional<ShortUrl> findByShortKey(String shortKey);
+
+    Page<ShortUrl> findByCreatedById(Long userId, Pageable pageable);
 }

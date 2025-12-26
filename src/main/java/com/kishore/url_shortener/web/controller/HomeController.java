@@ -10,14 +10,12 @@ import com.kishore.url_shortener.domain.service.ShortUrlService;
 import com.kishore.url_shortener.web.dto.CreateShortUrlForm;
 import com.kishore.url_shortener.web.utils.SecurityUtils;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.List;
 import java.util.Optional;
 
 @Controller
@@ -39,6 +37,7 @@ public class HomeController {
             Model model) {
         User currentUser = securityUtils.getCurrentUser();
         this.addShortUrlsDataToModel(model, page);
+        model.addAttribute("paginationUrl", "/");
         model.addAttribute("createShortUrlForm", new CreateShortUrlForm("", false, null));
         if (currentUser != null) {
             model.addAttribute("nameValidated", currentUser.getName());
@@ -93,5 +92,18 @@ public class HomeController {
     @GetMapping("/login")
     public String loginForm() {
         return "login";
+    }
+
+    @GetMapping("/my-urls")
+    public String showUserUrls(
+            @RequestParam(defaultValue = "1") int page,
+            Model model ) {
+        var currentUserId = securityUtils.getCurrentUserId();
+
+        PagedResult<ShortUrlDto> myUrls = shortUrlService.getUserShortUrls(currentUserId, page, properties.pageSize());
+        model.addAttribute("shortUrls", myUrls);
+        model.addAttribute("baseUrl", properties.baseUrl());
+        model.addAttribute("paginationUrl", "/my-urls");
+        return "my-urls";
     }
 }
