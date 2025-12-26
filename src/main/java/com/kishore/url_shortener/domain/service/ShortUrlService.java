@@ -45,10 +45,7 @@ public class ShortUrlService {
 
 
     public PagedResult<ShortUrlDto> findAllPublicShortUrls(int pageNo, int pageSize) {
-        pageNo = pageNo > 1 ? pageNo - 1 : 0;
-        Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-
-        Page<ShortUrl> shortUrlPage = shortUrlRepository.findAll(pageable);
+        Pageable pageable = getPageable(pageNo, pageSize);
         Page<ShortUrlDto> shortUrlDtoPage = shortUrlRepository.findPublicShortUrls(pageable)
                 .map(entityMapper::toShortUrlDto);
         return PagedResult.from(shortUrlDtoPage);
@@ -133,5 +130,18 @@ public class ShortUrlService {
     private Pageable getPageable(int page, int pageSize) {
         page = page > 1 ? page - 1 : 0;
         return PageRequest.of(page, pageSize, Sort.Direction.DESC, "createdAt");
+    }
+
+    @Transactional
+    public void deleteUserShortUrls(List<Long> ids, Long userId) {
+        if (ids != null && !ids.isEmpty() && userId != null) {
+            shortUrlRepository.deleteByIdInAndCreatedById(ids, userId);
+        }
+    }
+
+    public PagedResult<ShortUrlDto> findAllShortUrls(int page, int pageSize) {
+        Pageable pageable = getPageable(page, pageSize);
+        var shortUrlsPage =  shortUrlRepository.findAllShortUrls(pageable).map(entityMapper::toShortUrlDto);
+        return PagedResult.from(shortUrlsPage);
     }
 }
